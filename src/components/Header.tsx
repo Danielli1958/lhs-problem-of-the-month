@@ -20,7 +20,7 @@ export function Header({ user, onLogout }: HeaderProps) {
               <h1 className="text-2xl font-bold font-display tracking-wider text-foreground">
                 LHS Math Club
               </h1>
-              <p className="text-xs text-muted-foreground">Problem of the Week</p>
+              <p className="text-xs text-muted-foreground">Problem of the Month</p>
             </div>
           </div>
           

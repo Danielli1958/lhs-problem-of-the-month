@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar, Clock, CheckCircle2, Send, Lightbulb, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { formatProblemMonth } from "@/lib/utils";
 
 interface Problem {
   id: string;
@@ -14,7 +15,7 @@ interface Problem {
   description: string;
   difficulty: "Easy" | "Medium" | "Hard";
   points: number;
-  week_number: number;
+  month: string;
   due_date: string;
   hint?: string;
   correct_answer: string;
@@ -102,7 +103,7 @@ export function ProblemCard({
       const pointsEarned = isCorrect ? problem.points : Math.floor(problem.points * 0.1);
 
       const { data: submission, error } = await supabase
-        .from("submissions")
+        .from("potm_submissions")
         .upsert(
           {
             user_id: userId,
@@ -161,7 +162,7 @@ export function ProblemCard({
             <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
               <div className="flex items-center">
                 <Calendar className="w-4 h-4 mr-1" />
-                <span>Week {problem.week_number}</span>
+                <span>{formatProblemMonth(problem.month)}</span>
               </div>
               <div className="flex items-center">
                 <Clock className="w-4 h-4 mr-1" />

@@ -15,7 +15,7 @@ interface Problem {
   description: string;
   difficulty: "Easy" | "Medium" | "Hard";
   points: number;
-  week_number: number;
+  month: string;
   due_date: string;
   hint: string | null;
   correct_answer: string;
@@ -119,11 +119,12 @@ const Index = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [allTimeLeaderboard, setAllTimeLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
+  const [potmProfileReady, setPotmProfileReady] = useState(false);
 
   const updateLeaderboard = useCallback(async () => {
     try {
       const { data: profiles, error } = await supabase
-        .from("profiles")
+        .from("potm_profiles")
         .select("display_name, total_points, problems_solved, current_streak, user_id, updated_at, all_time_points, all_time_problems_solved");
 
       if (error) throw error;
@@ -191,7 +192,7 @@ const Index = () => {
     } catch (error) {
       console.error('Error updating leaderboard:', error);
     }
-  }, [user, currentProblem, previousProblem]);
+  }, [user, currentProblem, previousProblem, potmProfileReady]);
 
   const handlePointsUpdate = useCallback(async (pointsEarned: number, isCorrect: boolean, submissionTimestamp?: string) => {
     console.log('Updating points:', { pointsEarned, isCorrect, user, submissionTimestamp });
@@ -229,11 +230,23 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Accounts are shared with the Problem of the Week site, so a logged-in
+  // user may not have a POTM profile yet. Create it, then refresh the
+  // leaderboard so their stats show up.
+  useEffect(() => {
+    setPotmProfileReady(false);
+    if (!user?.id) return;
+    supabase.rpc("ensure_potm_profile").then(({ error }) => {
+      if (error) console.error("Error creating POTM profile:", error);
+      setPotmProfileReady(true);
+    });
+  }, [user?.id]);
+
   const fetchProblemAndSubmission = useCallback(async () => {
     if (!currentProblem?.id || !user?.id) return;
 
     const { data: submission } = await supabase
-      .from("submissions")
+      .from("potm_submissions")
       .select("selected_answer, is_correct")
       .eq("user_id", user.id)
       .eq("problem_id", currentProblem.id)
@@ -246,7 +259,7 @@ const Index = () => {
     if (!problemId) return new Map();
     
     const { data: problem, error } = await supabase
-      .from('problems')
+      .from('potm_problems')
       .select('submitted_user_ids')
       .eq('id', problemId)
       .single();
@@ -274,10 +287,11 @@ const Index = () => {
     setLoading(true);
     try {
       const { data: problems } = await supabase
-        .from("problems")
+        .from("potm_problems")
         .select("*")
         .eq("is_active", true)
-        .order("week_number", { ascending: false })
+        .order("month", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(2);
         
       if (problems && problems.length > 0) {
@@ -293,7 +307,7 @@ const Index = () => {
         
         if (user) {
           const { data: submission } = await supabase
-            .from("submissions")
+            .from("potm_submissions")
             .select("selected_answer, is_correct")
             .eq("user_id", user.id)
             .eq("problem_id", current.id)
@@ -341,10 +355,10 @@ const Index = () => {
         {/* Hero Section */}
         <section className="mb-8 text-center">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold mb-4 tracking-wider">
-            <span className="text-gradient">PROBLEM OF THE WEEK</span>
+            <span className="text-gradient">PROBLEM OF THE MONTH</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            Challenge yourself with weekly math problems. Top scorers get a prize at the end of the year!
+            Challenge yourself with monthly math problems. Top scorers get a prize at the end of the year!
           </p>
         </section>
 
@@ -402,7 +416,7 @@ const Index = () => {
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground">
                   <Brain className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                  <p className="text-lg">No active problem this week.</p>
+                  <p className="text-lg">No active problem this month.</p>
                   <p className="text-sm">Check back soon!</p>
                 </CardContent>
               </Card>

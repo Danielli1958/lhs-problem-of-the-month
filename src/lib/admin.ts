@@ -5,10 +5,10 @@ export const checkIsAdmin = async (): Promise<boolean> => {
   if (!user) return false;
 
   const { data: profile } = await supabase
-    .from('profiles')
+    .from('potm_profiles')
     .select('is_admin')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   return profile?.is_admin === true;
 };
@@ -25,7 +25,7 @@ export const withAdminAuth = async (callback: () => Promise<void>) => {
 // problems solved, and streak, while leaving all-time totals untouched.
 export const resetYearlyLeaderboard = async () => {
   return withAdminAuth(async () => {
-    const { error } = await supabase.rpc('reset_yearly_leaderboard');
+    const { error } = await supabase.rpc('reset_potm_yearly_leaderboard');
     if (error) throw error;
   });
 };

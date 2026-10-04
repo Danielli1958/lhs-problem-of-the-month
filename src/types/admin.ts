@@ -4,7 +4,7 @@ export interface ProblemFormData {
   description: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
   points: number;
-  week_number: number;
+  month: string; // "YYYY-MM" while editing; stored as "YYYY-MM-01"
   due_date: string;
   hint: string;
   correct_answer: string;

@@ -12,7 +12,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      problems: {
+      potm_problems: {
         Row: {
           correct_answer: string
           created_at: string
@@ -23,14 +23,15 @@ export type Database = {
           id: string
           is_active: boolean
           is_archived: boolean
+          month: string
           option_a: string
           option_b: string
           option_c: string
           option_d: string
           points: number
+          submitted_user_ids: string[]
           title: string
           updated_at: string
-          week_number: number
         }
         Insert: {
           correct_answer: string
@@ -42,14 +43,15 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_archived?: boolean
+          month: string
           option_a: string
           option_b: string
           option_c: string
           option_d: string
           points?: number
+          submitted_user_ids?: string[]
           title: string
           updated_at?: string
-          week_number: number
         }
         Update: {
           correct_answer?: string
@@ -61,18 +63,19 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_archived?: boolean
+          month?: string
           option_a?: string
           option_b?: string
           option_c?: string
           option_d?: string
           points?: number
+          submitted_user_ids?: string[]
           title?: string
           updated_at?: string
-          week_number?: number
         }
         Relationships: []
       }
-      profiles: {
+      potm_profiles: {
         Row: {
           all_time_points: number
           all_time_problems_solved: number
@@ -114,7 +117,7 @@ export type Database = {
         }
         Relationships: []
       }
-      submissions: {
+      potm_submissions: {
         Row: {
           id: string
           is_correct: boolean
@@ -144,10 +147,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "submissions_problem_id_fkey"
+            foreignKeyName: "potm_submissions_problem_id_fkey"
             columns: ["problem_id"]
             isOneToOne: false
-            referencedRelation: "problems"
+            referencedRelation: "potm_problems"
             referencedColumns: ["id"]
           },
         ]
@@ -157,7 +160,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      reset_yearly_leaderboard: {
+      ensure_potm_profile: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      is_potm_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      reset_potm_yearly_leaderboard: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }

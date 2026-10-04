@@ -52,10 +52,10 @@ const ProtectedAdminRoute = ({ children }: { children: React.ReactNode }) => {
       }
 
       const { data: profile, error } = await supabase
-        .from('profiles')
+        .from('potm_profiles')
         .select('is_admin')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error checking admin status:', error);

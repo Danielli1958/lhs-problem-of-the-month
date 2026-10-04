@@ -11,14 +11,30 @@ import { Plus, RotateCcw, Archive, ArchiveRestore } from 'lucide-react';
 import { ProblemFormData } from '@/types/admin';
 import { toast } from 'sonner';
 import { resetYearlyLeaderboard } from '@/lib/admin';
+import { formatProblemMonth } from '@/lib/utils';
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+// Defaults a new problem to the current month, due at the end of it.
+const getInitialFormData = (): ProblemFormData => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const lastDay = new Date(year, month, 0).getDate();
+  return {
+    ...initialFormData,
+    month: `${year}-${pad(month)}`,
+    due_date: `${year}-${pad(month)}-${pad(lastDay)}T23:59`,
+  };
+};
 
 const initialFormData: ProblemFormData = {
   title: '',
   description: '',
   difficulty: 'Medium',
   points: 10,
-  week_number: 1,
-  due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+  month: '',
+  due_date: '',
   hint: '',
   correct_answer: 'A',
   option_a: '',
@@ -30,7 +46,7 @@ const initialFormData: ProblemFormData = {
 
 export default function Admin() {
   const [problems, setProblems] = useState<any[]>([]);
-  const [formData, setFormData] = useState<ProblemFormData>({ ...initialFormData });
+  const [formData, setFormData] = useState<ProblemFormData>(getInitialFormData());
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -51,10 +67,10 @@ export default function Admin() {
       }
 
       const { data: profile } = await supabase
-        .from('profiles')
+        .from('potm_profiles')
         .select('is_admin')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (!profile?.is_admin) {
         toast.error('Unauthorized access');
@@ -76,9 +92,9 @@ export default function Admin() {
   const fetchProblems = async () => {
     try {
       const { data, error } = await supabase
-        .from('problems')
+        .from('potm_problems')
         .select('*')
-        .order('week_number', { ascending: true })
+        .order('month', { ascending: true })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -95,7 +111,7 @@ export default function Admin() {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'points' || name === 'week_number' ? Number(value) : value
+      [name]: name === 'points' ? Number(value) : value
     }));
   };
 
@@ -108,11 +124,13 @@ export default function Admin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // The month picker yields "YYYY-MM"; the column stores the 1st of the month
+    const payload = { ...formData, month: `${formData.month}-01` };
     try {
       if (isEditing && formData.id) {
         const { error } = await supabase
-          .from('problems')
-          .update({ ...formData, updated_at: new Date().toISOString() })
+          .from('potm_problems')
+          .update({ ...payload, updated_at: new Date().toISOString() })
           .eq('id', formData.id);
 
         if (error) throw error;
@@ -120,8 +138,8 @@ export default function Admin() {
         setActiveTab("manage-problems");
       } else {
         const { error } = await supabase
-          .from('problems')
-          .insert([{ ...formData }]);
+          .from('potm_problems')
+          .insert([payload]);
 
         if (error) throw error;
         toast.success('Problem added successfully');
@@ -136,8 +154,11 @@ export default function Admin() {
   };
 
   const handleEdit = (problem: any) => {
+    // Leave out trigger-maintained columns so saving an edit can't clobber them
+    const { submitted_user_ids, created_at, updated_at, ...editable } = problem;
     setFormData({
-      ...problem,
+      ...editable,
+      month: problem.month ? problem.month.slice(0, 7) : '',
       due_date: problem.due_date ? problem.due_date.slice(0, 16) : ''
     });
     setIsEditing(true);
@@ -148,7 +169,7 @@ export default function Admin() {
   const handleArchive = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('problems')
+        .from('potm_problems')
         .update({ is_archived: true, is_active: false })
         .eq('id', id);
 
@@ -165,7 +186,7 @@ export default function Admin() {
   const handleUnarchive = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('problems')
+        .from('potm_problems')
         .update({ is_archived: false })
         .eq('id', id);
 
@@ -184,7 +205,7 @@ export default function Admin() {
     
     try {
       const { error } = await supabase
-        .from('problems')
+        .from('potm_problems')
         .delete()
         .eq('id', id);
 
@@ -199,7 +220,7 @@ export default function Admin() {
   };
 
   const resetForm = () => {
-    setFormData({ ...initialFormData });
+    setFormData(getInitialFormData());
     setIsEditing(false);
   };
 
@@ -320,13 +341,12 @@ export default function Admin() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Week Number</label>
+                    <label className="text-sm font-medium">Month</label>
                     <Input
-                      type="number"
-                      name="week_number"
-                      value={formData.week_number}
+                      type="month"
+                      name="month"
+                      value={formData.month}
                       onChange={handleInputChange}
-                      min="1"
                       required
                     />
                   </div>
@@ -443,7 +463,7 @@ export default function Admin() {
                       <div>
                         <h3 className="font-medium">{problem.title}</h3>
                         <p className="text-sm text-muted-foreground">
-                          Week {problem.week_number} • {problem.difficulty} • {problem.points} points •
+                          {formatProblemMonth(problem.month)} • {problem.difficulty} • {problem.points} points •
                           Status: <span className={problem.is_active ? 'text-green-600' : 'text-amber-600'}>
                             {problem.is_active ? 'Active' : 'Inactive'}
                           </span>
@@ -496,7 +516,7 @@ export default function Admin() {
                       <div>
                         <h3 className="font-medium">{problem.title}</h3>
                         <p className="text-sm text-muted-foreground">
-                          Week {problem.week_number} • {problem.difficulty} • {problem.points} points
+                          {formatProblemMonth(problem.month)} • {problem.difficulty} • {problem.points} points
                         </p>
                       </div>
                       <div className="flex space-x-2">

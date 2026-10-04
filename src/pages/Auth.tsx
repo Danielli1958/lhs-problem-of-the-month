@@ -125,7 +125,7 @@ export default function Auth() {
             <Calculator className="w-8 h-8 text-primary-foreground" />
           </div>
           <CardTitle className="text-3xl tracking-wider">
-            {isLogin ? "WELCOME BACK" : "JOIN POTW"}
+            {isLogin ? "WELCOME BACK" : "JOIN POTM"}
           </CardTitle>
           <CardDescription>
             {isLogin ? "Log in to continue solving problems" : "Create your account to start earning points"}
